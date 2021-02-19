@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { prefix, token } = require('./config.json');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const { Readable } = require('stream');
@@ -21,17 +22,54 @@ client.once('ready', () => {
 });
 
 client.on('message', async message => {
-    if (message.content === '-9' && message.member.voice.channel) {
-        const connection = await message.member.voice.channel.join();
-        
-        // console.log(message.member.)
+    if (!message.content.startsWith(`${prefix}bot`) || message.author.bot) {
+        return;
+    }
 
-        const audio = connection.receiver.createStream(message, { mode: 'opus', end: 'manual' });
-        audio.pipe(fs.createWriteStream('user_audio'));
+    const args = message.content.slice(prefix.length).trim().split(' ');
+    args.shift();
+    const command = args.shift().toLowerCase();
 
-        connection.play(audio, { type: 'opus' });
-        console.log(message.member.user.id);
+    if (command === 'v' || command === 'version') {
+        message.channel.send('Current version: 1.0.0');
+        return;
+    }
+
+    if (command === 'clients') {
+        const channelId = '785193983118540800';
+        message.guild.channels.cache.get(channelId).members.forEach((member) => {
+            console.log(member.user.username);
+            message.channel.send(member.user.username);
+        });
+        return;
+    }
+
+    if (command === 's' && message.member.voice.channel) {
+        // const connection = await message.member.voice.channel.join();
+        // const channelId = '785193983118540800';
+
+        // message.guild.channels.cache.get(channelId).members.forEach((member) => {
+        //     // console.log(member.user.username);
+        // });
+
+        // const audio = connection.receiver.createStream(message.guild.channels.cache.get(channelId).members.get('749829330686705796'), { mode: 'opus', end: 'manual' });
+        // audio.pipe(fs.createWriteStream('user_audio'));
+
+        // connection.play(audio, { type: 'opus' });
+        message.member.voice.channel.join().then((connection) => {
+            const rec = connection.receiver;
+            connection.on('speaking', (user, speaking) => {
+                console.log(user.username, 'speaking:', speaking);
+
+                if (speaking) {
+                    const audio = rec.createStream(user, { mode: 'opus', end: 'silence' });
+                    connection.play(audio, { type: 'opus' });
+                    // audio.on('data', chunk => {
+                    //     console.log(`Received ${chunk.length} bytes of data.`);
+                    // });
+                }
+            });
+        });
     }
 });
-// https://discord.com/oauth2/authorize?client_id=811414051237396491&scope=bot
-client.login('ODExNDE0MDUxMjM3Mzk2NDkx.YCx2OQ.krPZkUYf1KZiy52008NeNgYRIKU');
+client.login(token);
